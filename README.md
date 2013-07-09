@@ -1,3 +1,1 @@
-#short-url-netty
-
-基于Netty和Redis实现的短域名服务
+鍩轰簬Netty銆丷edis瀹炵幇鐨勭煭鍩熷悕鏈嶅姟
