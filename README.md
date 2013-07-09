@@ -1,4 +1,4 @@
 short-url-netty
 ===============
 
-A short url http service builds on netty and redis
+基于Netty和Redis实现的短域名服务
