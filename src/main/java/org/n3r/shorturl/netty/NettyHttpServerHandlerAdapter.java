@@ -2,7 +2,7 @@ package org.n3r.shorturl.netty;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class NettyHttpServerHandlerAdapter extends ChannelInboundMessageHandlerAdapter<Object> {
+public class NettyHttpServerHandlerAdapter extends ChannelInboundHandlerAdapter {
 
     private HttpRequest request;
 
@@ -34,7 +34,8 @@ public class NettyHttpServerHandlerAdapter extends ChannelInboundMessageHandlerA
     }
 
     @Override
-    public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+    	super.channelReadComplete(ctx);
         ctx.flush();
     }
 
@@ -45,7 +46,7 @@ public class NettyHttpServerHandlerAdapter extends ChannelInboundMessageHandlerA
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             request = (HttpRequest) msg;
 
@@ -87,7 +88,7 @@ public class NettyHttpServerHandlerAdapter extends ChannelInboundMessageHandlerA
 
     private static void send100Continue(ChannelHandlerContext ctx, HttpRequest request) {
         HttpResponse response = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.CONTINUE);
-        ctx.nextOutboundMessageBuffer().add(response);
+        ctx.write(response);
     }
 
 }

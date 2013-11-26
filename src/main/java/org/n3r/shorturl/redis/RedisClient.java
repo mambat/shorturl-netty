@@ -83,7 +83,6 @@ public class RedisClient implements Closeable {
         }
     }
 
-    @Override
     public void close() throws IOException {
         pool.destroy();
     }
