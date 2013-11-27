@@ -2,7 +2,7 @@ package org.n3r.shorturl.netty;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundMessageHandlerAdapter;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -12,13 +12,14 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.CharsetUtil;
+import io.netty.util.ReferenceCountUtil;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class NettyHttpServerHandlerAdapter extends ChannelInboundMessageHandlerAdapter<Object> {
+public class NettyHttpServerHandlerAdapter extends ChannelInboundHandlerAdapter {
 
     private HttpRequest request;
 
@@ -34,7 +35,8 @@ public class NettyHttpServerHandlerAdapter extends ChannelInboundMessageHandlerA
     }
 
     @Override
-    public void endMessageReceived(ChannelHandlerContext ctx) throws Exception {
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+    	super.channelReadComplete(ctx);
         ctx.flush();
     }
 
@@ -45,49 +47,53 @@ public class NettyHttpServerHandlerAdapter extends ChannelInboundMessageHandlerA
     }
 
     @Override
-    public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
-        if (msg instanceof HttpRequest) {
-            request = (HttpRequest) msg;
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    	try{
+    		 if (msg instanceof HttpRequest) {
+    	            request = (HttpRequest) msg;
 
-            if (HttpHeaders.is100ContinueExpected(request)) {
-                send100Continue(ctx, request);
-            }
+    	            if (HttpHeaders.is100ContinueExpected(request)) {
+    	                send100Continue(ctx, request);
+    	            }
 
-            QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.getUri());
+    	            QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.getUri());
 
-            urlPattern = queryStringDecoder.path();
+    	            urlPattern = queryStringDecoder.path();
 
-            Map<String, List<String>> params = queryStringDecoder.parameters();
-            if (!params.isEmpty()) {
-                for (Entry<String, List<String>> p: params.entrySet()) {
-                    parameters.put(p.getKey(), p.getValue().get(0));
-                }
-            }
-        }
+    	            Map<String, List<String>> params = queryStringDecoder.parameters();
+    	            if (!params.isEmpty()) {
+    	                for (Entry<String, List<String>> p: params.entrySet()) {
+    	                    parameters.put(p.getKey(), p.getValue().get(0));
+    	                }
+    	            }
+    	        }
 
-        if (msg instanceof HttpContent) {
-            HttpContent httpContent = (HttpContent) msg;
-            ByteBuf content = httpContent.content();
-            if (content.isReadable()) {
-                String[] params = content.toString(CharsetUtil.UTF_8).split("&");
-                for (String param : params) {
-                    String[] kv = param.split("=");
-                    if (kv.length == 1) continue;
-                    parameters.put(QueryStringDecoder.decodeComponent(kv[0], CharsetUtil.UTF_8),
-                            QueryStringDecoder.decodeComponent(kv[1], CharsetUtil.UTF_8));
-                }
-            }
+    	        if (msg instanceof HttpContent) {
+    	            HttpContent httpContent = (HttpContent) msg;
+    	            ByteBuf content = httpContent.content();
+    	            if (content.isReadable()) {
+    	                String[] params = content.toString(CharsetUtil.UTF_8).split("&");
+    	                for (String param : params) {
+    	                    String[] kv = param.split("=");
+    	                    if (kv.length == 1) continue;
+    	                    parameters.put(QueryStringDecoder.decodeComponent(kv[0], CharsetUtil.UTF_8),
+    	                            QueryStringDecoder.decodeComponent(kv[1], CharsetUtil.UTF_8));
+    	                }
+    	            }
 
-            if (msg instanceof LastHttpContent) {
-                // LastHttpContent trailer = (LastHttpContent) msg;
-                handler.handle(ctx, request, urlPattern, parameters);
-            }
-        }
+    	            if (msg instanceof LastHttpContent) {
+    	                // LastHttpContent trailer = (LastHttpContent) msg;
+    	                handler.handle(ctx, request, urlPattern, parameters);
+    	            }
+    	        }
+    	}finally {
+    		ReferenceCountUtil.release(msg);
+    	}
     }
 
     private static void send100Continue(ChannelHandlerContext ctx, HttpRequest request) {
         HttpResponse response = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.CONTINUE);
-        ctx.nextOutboundMessageBuffer().add(response);
+        ctx.write(response);
     }
 
 }

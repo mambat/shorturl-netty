@@ -1,7 +1,6 @@
 package org.n3r.shorturl.netty;
 
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
@@ -18,9 +17,8 @@ import org.n3r.shorturl.redis.RedisClient;
 public class ShortUrlNettyHandler implements NettyHttpServerHandler {
     public static final RedisClient redis = new RedisClient("132.35.81.197:6379");
 
-    @Override
     public void handle(ChannelHandlerContext ctx, HttpRequest request, String urlPattern, Map<String, String> parameters) {
-        String rspCnt = "/favicon.ico".equalsIgnoreCase(urlPattern) ? "" : "/generate".equalsIgnoreCase(urlPattern) ?
+    	String rspCnt = "/favicon.ico".equalsIgnoreCase(urlPattern) ? "" : "/generate".equalsIgnoreCase(urlPattern) ?
                 generate(ctx, request, parameters) : query(ctx, request, parameters);
 
         FullHttpResponse response = createResponse(request, rspCnt);
@@ -31,10 +29,10 @@ public class ShortUrlNettyHandler implements NettyHttpServerHandler {
             response.headers().set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
         }
 
-        ctx.nextOutboundMessageBuffer().add(response);
+        ctx.write(response);
 
         if (!keepAlive) {
-            ctx.flush().addListener(ChannelFutureListener.CLOSE);
+            ctx.flush().close();
         }
     }
 
